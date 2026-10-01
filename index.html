@@ -319,9 +319,12 @@ function facts(pairs) {
 }
 
 function ticket(e) {
-  const html = ticketBody(e), docs = (e.it.docs || []).map(docById).filter(Boolean);
-  if (!docs.length) return html;
-  return html.replace(/<\/article>$/, `<div class="docs">${docs.map(d => `<button class="btn doc" data-doc="${d.id}">${esc(d.label)}</button>`).join("")}</div></article>`);
+  const it = e.it, html = ticketBody(e), docs = (it.docs || []).map(docById).filter(Boolean);
+  // Vuelos y trenes: mapa de la estación o aeropuerto de salida y de llegada.
+  const place = p => it.type === "flight" ? `Aeropuerto ${p.code} ${p.city}${p.terminal ? " " + p.terminal : ""}` : `${p.station}, ${p.city}`;
+  const maps2 = (it.type === "flight" || it.type === "train") ? [["Mapa salida", place(it.from)], ["Mapa llegada", place(it.to)]] : [];
+  if (!docs.length && !maps2.length) return html;
+  return html.replace(/<\/article>$/, `<div class="docs">${maps2.map(([l, q]) => `<a class="btn" href="${maps(q)}" target="_blank" rel="noopener">${l} ↗</a>`).join("")}${docs.map(d => `<button class="btn doc" data-doc="${d.id}">${esc(d.label)}</button>`).join("")}</div></article>`);
 }
 const docById = id => TRIP.docs.find(d => d.id === id);
 function ticketBody(e) {
@@ -349,7 +352,7 @@ function ticketBody(e) {
       </div>
       ${facts([["Asientos", it.seats]])}
       ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
-      ${confRow(it.confirmation, e.role === "dep" ? it.from.station : it.to.station)}</article>`;
+      ${confRow(it.confirmation)}</article>`;
   }
   if (it.type === "car") {
     const days = diffDays(it.pickup.date, it.dropoff.date);
