@@ -537,8 +537,12 @@ document.getElementById("lockForm").addEventListener("submit", async ev => {
   if (!pw) return;
   btn.disabled = true; msg.textContent = "Abriendo…";
   try {
-    const key = await deriveKey(pw);
-    await unlockWith(key);
+    // Si el teclado puso mayúscula al inicio, también se prueba en minúsculas.
+    let key;
+    for (const cand of [...new Set([pw, pw.toLowerCase()])]) {
+      key = await deriveKey(cand);
+      try { await unlockWith(key); break; } catch (e) { if (cand === pw.toLowerCase()) throw e; }
+    }
     try { localStorage.setItem("meuropa-key", toB64(await crypto.subtle.exportKey("raw", key))); } catch (e) {}
     msg.textContent = "";
   } catch (e) {
