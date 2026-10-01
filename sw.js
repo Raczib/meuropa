@@ -1,10 +1,10 @@
 // Guarda la app, el itinerario cifrado y los documentos en el teléfono para que funcione sin internet.
 // build.mjs cambia CACHE y la lista DATA cada vez que cambia el contenido; el teléfono baja la nueva versión
 // la próxima vez que abra la app con internet.
-const CACHE = "meuropa-800f16650d";
+const CACHE = "meuropa-0f27c69f99";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
   "vendor/pdfjs/pdf.min.js", "vendor/pdfjs/pdf.worker.min.js"];
-const DATA = /* DATA:start */ ["data.bin","meta.json","docs/94f11a8b21318f38.bin","docs/c2d1f0122b1efe92.bin","docs/783fbeccc622de8d.bin","docs/9b6646fb665e292c.bin","docs/7a81296c2923f559.bin","docs/367250753327b284.bin","docs/8c7061170708c302.bin","docs/be401559d4ec5ce2.bin","docs/8a517f5c92849ee6.bin","docs/4bbbd3715fb73bc7.bin","docs/1bf867d13270cb86.bin","docs/a3c28a3b95c6fe73.bin","docs/925925d9aa79bf19.bin","docs/5e7015024e08ccee.bin","docs/a1afcb012922124e.bin","docs/344097c85aa4a01b.bin","docs/be553f7c0638cc48.bin","docs/d31b308d66dcf6a1.bin","docs/4e8574ffd323c588.bin","docs/b4230a85dbcae7ba.bin","docs/86e4b3914906f2d6.bin","docs/699e6eda6c0ef182.bin","docs/d12e9ae98d2d6c2c.bin","docs/97a612f21551ff6f.bin","docs/88b22a722f624db6.bin","docs/9ba395d55e65cbaa.bin","docs/0bae44d8ac4307c0.bin","docs/48bfae1dfebaa304.bin","docs/a8f5fe134b9b7179.bin","docs/2a0f60689efda2fe.bin"] /* DATA:end */;
+const DATA = /* DATA:start */ ["data.bin","meta.json","docs/dc1cc0406224d18c.bin","docs/b7626afd39b15bd2.bin","docs/7fc53b0792943219.bin","docs/cdd418f5b29b6059.bin","docs/fa188d0e70feeb5c.bin","docs/d6205c8559dee5a6.bin","docs/163a3a222f6092de.bin","docs/56f670da0f1917f9.bin","docs/73428b9c653613c1.bin","docs/a2e4c2803305acb5.bin","docs/41324926d1819feb.bin","docs/d0330d6a14d70c77.bin","docs/a61aca9aa83c7114.bin","docs/5690736c52815c00.bin","docs/4806d4afe5910d9e.bin","docs/eb307f7146d6c938.bin","docs/c3e2f1430201a328.bin","docs/54d58442a5e507bd.bin","docs/f1fce42b677e44ce.bin","docs/047bf2aaf4f7e1ce.bin","docs/9d125bdb2d319d30.bin","docs/500d60c615e6786d.bin","docs/f3ec9310f93f45de.bin","docs/6a89be57b73a0214.bin","docs/813d8f840ec6d9f1.bin","docs/36942ccf98033499.bin","docs/751fcf843d545008.bin","docs/9b6d02dc15d92cd3.bin","docs/6662ba7dfeeab3ab.bin","docs/9add7859fd4120e2.bin"] /* DATA:end */;
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll([...CORE, ...DATA])).then(() => self.skipWaiting()));
