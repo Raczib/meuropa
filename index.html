@@ -159,6 +159,16 @@ ol.stops::before { content: ""; position: absolute; left: 15px; top: 16px; botto
 .pend { font-style: normal; color: var(--warn-fg); background: var(--warn-bg); padding: 0 6px; border-radius: 6px; }
 .sleep.missing { border-color: var(--signal); }
 
+.alert { display: grid; gap: 2px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn-fg); font-size: 14px; }
+.alert .akind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.alert.print { background: var(--board); color: var(--board-fg); }
+.alert.print .akind { color: var(--signal); }
+.alert.deadline { border: 2px solid var(--signal); }
+.alerts .alert:first-child { margin-top: 0; }
+.alerts { display: grid; gap: 8px; }
+.pays { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pays li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.pays span { font-size: 13px; color: var(--muted); }
 .docs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .btn.doc { border-color: var(--k, var(--line)); }
 .doclist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -196,6 +206,7 @@ body.noscroll { overflow: hidden; }
     <div class="progress"><span class="status-pill" id="statusPill"></span><div class="bar"><i id="barFill"></i></div><span id="range"></span></div>
     <nav class="tabs" role="tablist" aria-label="Secciones">
       <button role="tab" id="tab-hoy" data-tab="hoy">Hoy</button>
+      <button role="tab" id="tab-imp" data-tab="imp">Importante</button>
       <button role="tab" id="tab-route" data-tab="route">Ruta</button>
       <button role="tab" id="tab-flight" data-tab="flight">Vuelos</button>
       <button role="tab" id="tab-train" data-tab="train">Trenes y auto</button>
@@ -409,6 +420,7 @@ function renderDay() {
   const tag = day === today ? "Hoy · " : "";
   return `<div class="days" id="days">${chips}</div>
     <div class="day-head"><div class="eyebrow">${tag}Día ${idx} de ${DAYS.length}</div><h2>${esc(cityFor(day) || "En camino")}</h2><div class="sub">${longDate(day)}</div></div>
+    ${(TRIP.important || []).filter(a => a.date === day).map(alertBox).join("")}
     ${evs.length ? `<ol class="timeline">${evs.map(evRow).join("")}</ol>` : `<div class="empty">Día libre. No hay vuelos, trenes ni check-ins.</div>`}
     ${h ? `<div class="sleep"><span class="ic" aria-hidden="true">☾</span><div><b>Esta noche: ${esc(h.name)}</b><span>${[h.address, h.confirmation ? `${h.confLabel || "Conf."} ${h.confirmation}` : h.notes].filter(Boolean).map(esc).join(" · ")}</span></div>
       ${h.address ? `<a class="btn" style="margin-left:auto" href="${maps(h.address)}" target="_blank" rel="noopener">Mapa ↗</a>` : ""}</div>`
@@ -452,6 +464,21 @@ function renderList(type) {
   }).join("") : `<div class="empty">Todavía no hay ${titles[type].toLowerCase()} cargados.</div>`}</section>`;
 }
 
+const KIND = { print: "Imprimir", deadline: "Fecha límite", info: "Ojo" };
+const alertBox = a => `<div class="alert ${a.kind}"><span class="akind">${KIND[a.kind] || "Ojo"}</span><span>${esc(a.text)}</span></div>`;
+function renderImportant() {
+  const imp = TRIP.important || [];
+  const before = imp.filter(a => !a.date), dated = imp.filter(a => a.date).sort((a, b) => a.date.localeCompare(b.date));
+  const groups = {}; dated.forEach(a => (groups[a.date] = groups[a.date] || []).push(a));
+  const pays = TRIP.items.filter(i => i.pay && !/^Pagado/.test(i.pay));
+  return `<section class="list"><h2>Importante</h2>
+    <div class="group"><div class="gdate">Antes de salir</div><div class="alerts">${before.map(alertBox).join("")}</div></div>
+    ${Object.keys(groups).map(d => `<div class="group"><div class="gdate">${longDate(d)}</div><div class="alerts">${groups[d].map(alertBox).join("")}</div></div>`).join("")}
+    <div class="group"><div class="gdate">Pagos pendientes en hoteles y auto</div><ul class="pays">${pays.map(i =>
+      `<li><b>${esc(i.name)}</b><span>${esc(i.pay)}</span></li>`).join("")}</ul></div>
+  </section>`;
+}
+
 function renderDocs() {
   const groups = {};
   TRIP.docs.forEach(d => (groups[d.date] = groups[d.date] || []).push(d));
@@ -464,7 +491,7 @@ function renderDocs() {
 function render() {
   renderHeader();
   const view = document.getElementById("view");
-  view.innerHTML = state.tab === "hoy" ? renderDay() : state.tab === "route" ? renderRoute() : state.tab === "docs" ? renderDocs() : renderList(state.tab);
+  view.innerHTML = state.tab === "imp" ? renderImportant() : state.tab === "hoy" ? renderDay() : state.tab === "route" ? renderRoute() : state.tab === "docs" ? renderDocs() : renderList(state.tab);
   const sel = view.querySelector('.day-chip[aria-pressed="true"]');
   if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
 }
