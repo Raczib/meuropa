@@ -171,6 +171,10 @@ ol.stops::before { content: ""; position: absolute; left: 15px; top: 16px; botto
 .pays span { font-size: 13px; color: var(--muted); }
 .docs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .btn.doc { border-color: var(--k, var(--line)); }
+.btn.add { border-style: dashed; color: var(--muted); }
+.doclist .mrow { display: flex; gap: 6px; align-items: center; }
+.doclist .mrow .docitem { flex: 1; min-width: 0; }
+.group > .btn.add { margin-top: 8px; }
 .doclist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .docitem { width: 100%; text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; display: grid; gap: 2px; font: inherit; }
 .docitem .dname { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
@@ -334,10 +338,14 @@ function ticket(e) {
   // Vuelos y trenes: mapa de la estación o aeropuerto de salida y de llegada.
   const place = p => it.type === "flight" ? `Aeropuerto ${p.code} ${p.city}${p.terminal ? " " + p.terminal : ""}` : `${p.station}, ${p.city}`;
   const maps2 = (it.type === "flight" || it.type === "train") ? [["Mapa salida", place(it.from)], ["Mapa llegada", place(it.to)]] : [];
-  if (!docs.length && !maps2.length) return html;
-  return html.replace(/<\/article>$/, `<div class="docs">${maps2.map(([l, q]) => `<a class="btn" href="${maps(q)}" target="_blank" rel="noopener">${l} ↗</a>`).join("")}${docs.map(d => `<button class="btn doc" data-doc="${d.id}">${esc(d.label)}</button>`).join("")}</div></article>`);
+  const k = itemKey(it), mine = MINE.filter(m => m.key === k);
+  const add = it.type === "plan" ? "" : `<button class="btn add" data-add="${esc(k)}">＋ Pase / QR</button>`;
+  return html.replace(/<\/article>$/, `<div class="docs">${maps2.map(([l, q]) => `<a class="btn" href="${maps(q)}" target="_blank" rel="noopener">${l} ↗</a>`).join("")}${docs.map(d => `<button class="btn doc" data-doc="${d.id}">${esc(d.label)}</button>`).join("")}${mine.map(m => `<button class="btn doc mine" data-doc="m:${m.id}">📱 ${esc(m.name)}</button>`).join("")}${add}</div></article>`);
 }
-const docById = id => TRIP.docs.find(d => d.id === id);
+const docById = id => id.startsWith("m:") ? MINE.find(m => "m:" + m.id === id) : TRIP.docs.find(d => d.id === id);
+const itemKey = it => [it.type, it.number || it.name || it.title || "", (it.from && it.from.date) || it.checkIn || it.date || (it.pickup && it.pickup.date) || ""].join("|");
+const itemLabel = k => { const it = TRIP.items.find(i => itemKey(i) === k); if (!it) return "";
+  return it.type === "flight" ? `Vuelo ${it.number} ${it.from.code}→${it.to.code}` : it.type === "train" ? `Tren ${it.from.city}→${it.to.city}` : it.name || it.title || ""; };
 function ticketBody(e) {
   const it = e.it;
   if (it.type === "flight") {
@@ -482,7 +490,11 @@ function renderImportant() {
 function renderDocs() {
   const groups = {};
   TRIP.docs.forEach(d => (groups[d.date] = groups[d.date] || []).push(d));
-  return `<section class="list"><h2>Documentos</h2><p class="sub">${TRIP.docs.length} archivos. Se guardan en el teléfono y se abren sin internet.</p>
+  const mine = `<div class="group"><div class="gdate">Subidos en este teléfono</div>
+    <p class="sub">Pases de abordar, QR o capturas que subas aquí se quedan solo en este teléfono, cifrados y disponibles sin internet. Para que también los vea tu acompañante, súbelos en su teléfono o mándalos al chat del proyecto.</p>
+    <ul class="doclist">${MINE.map(m => `<li class="mrow"><button class="docitem" data-doc="m:${m.id}"><span class="dname">📱 ${esc(m.name)}</span><span class="dlabel">${esc(itemLabel(m.key) || "General")}</span></button><button class="btn del" data-del="${m.id}" aria-label="Borrar">Borrar</button></li>`).join("")}</ul>
+    <button class="btn add" data-add="">＋ Subir foto o PDF</button></div>`;
+  return `<section class="list"><h2>Documentos</h2><p class="sub">${TRIP.docs.length} archivos. Se guardan en el teléfono y se abren sin internet.</p>${mine}
     ${Object.keys(groups).sort().map(date => `<div class="group"><div class="gdate">${longDate(date)}</div><ul class="doclist">${groups[date].map(d =>
       `<li><button class="docitem" data-doc="${d.id}"><span class="dname">${esc(d.name)}</span><span class="dlabel">${esc(d.label)}</span></button></li>`).join("")}</ul></div>`).join("")}
   </section>`;
@@ -501,6 +513,14 @@ document.addEventListener("click", ev => {
   if (tab) { state.tab = tab.dataset.tab; if (state.tab === "hoy") state.day = null; save(); render(); window.scrollTo(0, 0); return; }
   const chip = ev.target.closest("[data-day]");
   if (chip) { state.day = chip.dataset.day; render(); return; }
+  const add = ev.target.closest("[data-add]");
+  if (add) { addKey = add.dataset.add; picker.click(); return; }
+  const del = ev.target.closest("[data-del]");
+  if (del) {
+    const m = MINE.find(x => x.id === del.dataset.del);
+    if (m && confirm(`¿Borrar "${m.name}" de este teléfono?`)) idbDo("readwrite", st => st.delete(m.id)).then(loadMine).then(render);
+    return;
+  }
   const doc = ev.target.closest("[data-doc]");
   if (doc) { openDoc(doc.dataset.doc); return; }
   const cp = ev.target.closest("[data-copy]");
@@ -520,7 +540,7 @@ async function deriveKey(password) {
   const meta = await (await fetch("meta.json")).json();
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "PBKDF2", salt: fromB64(meta.salt), iterations: meta.iterations, hash: "SHA-256" },
-    base, { name: "AES-GCM", length: 256 }, true, ["decrypt"]);
+    base, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 }
 async function decryptFile(path) {
   const res = await fetch(path);
@@ -528,7 +548,40 @@ async function decryptFile(path) {
   const buf = new Uint8Array(await res.arrayBuffer());
   return crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, KEY, buf.slice(12));
 }
-async function loadTrip() { setTrip(JSON.parse(new TextDecoder().decode(await decryptFile("data.bin")))); }
+async function loadTrip() { setTrip(JSON.parse(new TextDecoder().decode(await decryptFile("data.bin")))); await loadMine(); }
+
+/* ===== Archivos subidos en este teléfono (IndexedDB, cifrados con la misma llave) ===== */
+let MINE = [];
+function idb() {
+  return new Promise((ok, fail) => { const r = indexedDB.open("meuropa", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("mine", { keyPath: "id" });
+    r.onsuccess = () => ok(r.result); r.onerror = () => fail(r.error); });
+}
+async function idbDo(mode, fn) {
+  const db = await idb();
+  return new Promise((ok, fail) => { const tx = db.transaction("mine", mode), req = fn(tx.objectStore("mine"));
+    tx.oncomplete = () => ok(req && req.result); tx.onerror = () => fail(tx.error); });
+}
+async function loadMine() { try { MINE = (await idbDo("readonly", st => st.getAll())).sort((a, b) => a.added - b.added); } catch (e) { MINE = []; } }
+async function openSealed(buf) { const b = new Uint8Array(buf); return crypto.subtle.decrypt({ name: "AES-GCM", iv: b.slice(0, 12) }, KEY, b.slice(12)); }
+async function addMine(file, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, KEY, await file.arrayBuffer()));
+  const enc = new Uint8Array(12 + ct.length); enc.set(iv); enc.set(ct, 12);
+  const type = file.type || (/\.pdf$/i.test(file.name) ? "application/pdf" : "image/jpeg");
+  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), key, name: file.name || "documento", type, added: Date.now(), enc: enc.buffer };
+  await idbDo("readwrite", st => st.put(m));
+  try { await navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+}
+let addKey = "";
+const picker = Object.assign(document.createElement("input"), { type: "file", accept: "image/*,application/pdf", multiple: true, hidden: true });
+document.body.appendChild(picker);
+picker.addEventListener("change", async () => {
+  const files = [...picker.files]; picker.value = "";
+  if (!files.length || !KEY) return;
+  try { for (const f of files) await addMine(f, addKey); await loadMine(); render(); toast(files.length > 1 ? `${files.length} archivos guardados` : "Guardado en este teléfono"); }
+  catch (e) { toast("No se pudo guardar el archivo"); }
+});
 
 async function unlockWith(key) { KEY = key; await loadTrip(); document.getElementById("lock").hidden = true; render(); }
 document.getElementById("lockForm").addEventListener("submit", async ev => {
@@ -554,7 +607,7 @@ document.getElementById("lockForm").addEventListener("submit", async ev => {
   let stored = null;
   try { stored = localStorage.getItem("meuropa-key"); } catch (e) {}
   if (stored) {
-    try { return await unlockWith(await crypto.subtle.importKey("raw", fromB64(stored), "AES-GCM", true, ["decrypt"])); }
+    try { return await unlockWith(await crypto.subtle.importKey("raw", fromB64(stored), "AES-GCM", true, ["encrypt", "decrypt"])); }
     catch (e) { try { localStorage.removeItem("meuropa-key"); } catch (_) {} }
   }
   document.getElementById("lock").hidden = false;
@@ -575,7 +628,7 @@ async function openDoc(id) {
   document.getElementById("vtitle").textContent = d.name;
   body.innerHTML = '<p class="vmsg">Abriendo…</p>'; v.hidden = false; document.body.classList.add("noscroll");
   try {
-    const bytes = await decryptFile(`docs/${d.id}.bin`);
+    const bytes = id.startsWith("m:") ? await openSealed(d.enc) : await decryptFile(`docs/${d.id}.bin`);
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
     viewerUrl = URL.createObjectURL(new Blob([bytes], { type: d.type }));
     dl.href = viewerUrl; dl.download = d.name;
