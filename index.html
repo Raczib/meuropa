@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#13235b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MEUROPA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>html{color-scheme:light}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+.offline{margin-top:10px;background:var(--surface);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:8px 12px;font-size:13px}</style>
+<title>MEUROPA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a phone-first travel pass. Sticky header with trip progress, a horizontal strip of day chips,
+   then one day as a timeline of tickets (flight / train / hotel / plan). Departure-board blue + signal yellow. */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --ink: #14213d;
+  --muted: #5b6577;
+  --line: #d6dce6;
+  --board: #13235b;
+  --board-fg: #f4f6fb;
+  --signal: #ffc629;
+  --signal-ink: #1b1600;
+  --flight: #2a62d8;
+  --train: #c2410c;
+  --hotel: #0f7b5f;
+  --plan: #7c3aed;
+  --car: #0e7490;
+  --warn-bg: #fff4d1;
+  --warn-fg: #6b4e00;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1222; --surface: #151d33; --ink: #e8ecf5; --muted: #98a2b8; --line: #27324d;
+    --board: #0a1640; --board-fg: #eef1fa; --signal: #ffcf47; --signal-ink: #1b1600;
+    --flight: #6c9bff; --train: #fb8a4c; --hotel: #34c79c; --plan: #b18cff; --car: #3cc6dd;
+    --warn-bg: #3a2f0d; --warn-fg: #ffe08a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1222; --surface: #151d33; --ink: #e8ecf5; --muted: #98a2b8; --line: #27324d;
+  --board: #0a1640; --board-fg: #eef1fa; --signal: #ffcf47; --signal-ink: #1b1600;
+  --flight: #6c9bff; --train: #fb8a4c; --hotel: #34c79c; --plan: #b18cff; --car: #3cc6dd;
+  --warn-bg: #3a2f0d; --warn-fg: #ffe08a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 0 96px; }
+
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--board); color: var(--board-fg);
+  margin-inline: -16px; padding: 14px 16px 12px;
+}
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: 0.02em; }
+.brand .pax { font-size: 12px; opacity: .8; text-align: right; }
+.progress { margin-top: 8px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; }
+.bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--signal); }
+.status-pill { background: var(--signal); color: var(--signal-ink); padding: 2px 8px; border-radius: 99px; font-weight: 700; white-space: nowrap; }
+
+nav.tabs { display: flex; gap: 6px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs::-webkit-scrollbar { display: none; }
+nav.tabs button {
+  flex: 0 0 auto; border: 1px solid rgba(255,255,255,.25); background: transparent; color: var(--board-fg);
+  font: 600 13px var(--body); padding: 6px 12px; border-radius: 99px; cursor: pointer;
+}
+nav.tabs button[aria-selected="true"] { background: var(--board-fg); color: var(--board); border-color: var(--board-fg); }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+.sample { margin-top: 14px; background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.sample b { font-weight: 700; }
+
+.days { display: flex; gap: 8px; overflow-x: auto; padding: 14px 2px 6px; scroll-snap-type: x proximity; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.day-chip {
+  flex: 0 0 58px; scroll-snap-align: center; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 12px; padding: 6px 4px 7px; text-align: center; cursor: pointer; font-family: var(--body);
+}
+.day-chip .dow { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.day-chip .num { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.1; }
+.day-chip .city { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-chip.today { border-color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal); }
+.day-chip[aria-pressed="true"] { background: var(--board); color: var(--board-fg); border-color: var(--board); }
+.day-chip[aria-pressed="true"] .dow, .day-chip[aria-pressed="true"] .city { color: var(--board-fg); opacity: .8; }
+
+.day-head { margin-top: 10px; display: grid; gap: 2px; }
+.day-head .eyebrow { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.day-head h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 1.1; text-wrap: balance; }
+.day-head .sub { color: var(--muted); }
+
+.timeline { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 12px; }
+.ev { display: grid; grid-template-columns: 54px 1fr; gap: 10px; }
+.ev .time { font-family: var(--mono); font-weight: 700; font-size: 15px; padding-top: 12px; font-variant-numeric: tabular-nums; }
+.ev .time small { display: block; font-weight: 500; font-size: 10px; color: var(--muted); }
+.ticket {
+  min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+  border-left: 5px solid var(--k, var(--muted));
+}
+.ticket.flight { --k: var(--flight); } .ticket.train { --k: var(--train); }
+.ticket.hotel { --k: var(--hotel); } .ticket.car { --k: var(--car); } .ticket.plan { --k: var(--plan); }
+.kind { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--k); }
+.ticket h3 { margin: 2px 0 6px; font-family: var(--display); font-weight: 700; font-size: 19px; line-height: 1.2; text-wrap: balance; }
+.route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 6px 0 8px; }
+.route .end { min-width: 0; }
+.route .end:last-child { text-align: right; }
+.route .code { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1; }
+.route .t { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.route .p { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.route .arrow { color: var(--k); font-size: 18px; }
+dl.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px 12px; margin: 8px 0 0; }
+dl.facts div { min-width: 0; }
+dl.facts dt { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+dl.facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.conf { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); flex-wrap: wrap; }
+.conf .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.conf code { font-family: var(--mono); font-weight: 700; font-size: 16px; letter-spacing: .08em; }
+.btn {
+  border: 1px solid var(--line); background: transparent; color: var(--ink); font: 600 12px var(--body);
+  padding: 5px 10px; border-radius: 99px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+}
+.conf .btn:first-of-type { margin-left: auto; }
+.note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.addr { margin: 0; font-size: 13px; color: var(--muted); }
+
+.sleep { margin-top: 18px; display: flex; gap: 10px; align-items: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 10px 14px; }
+.sleep .ic { font-size: 18px; }
+.sleep div { min-width: 0; }
+.sleep b { display: block; }
+.sleep span { font-size: 13px; color: var(--muted); }
+.empty { margin-top: 16px; color: var(--muted); background: var(--surface); border-radius: 14px; padding: 16px; border: 1px solid var(--line); }
+
+section.list h2 { font-family: var(--display); font-size: 24px; margin: 18px 0 4px; }
+section.list .group { margin-top: 16px; }
+section.list .group > .gdate { font-family: var(--mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+section.list .group .timeline { margin-top: 0; }
+.ev.solo { grid-template-columns: 1fr; }
+.route-list .sub { color: var(--muted); margin: 0; }
+ol.stops { list-style: none; margin: 16px 0 0; padding: 0; position: relative; }
+ol.stops::before { content: ""; position: absolute; left: 15px; top: 16px; bottom: 16px; border-left: 2px dashed var(--line); }
+.stop { position: relative; display: flex; gap: 12px; align-items: center; padding-block: 7px; }
+.stop .n { flex: 0 0 32px; height: 32px; border-radius: 50%; background: var(--board); color: var(--board-fg); display: grid; place-items: center; font: 700 13px var(--mono); z-index: 1; }
+.stop.home .n { background: var(--signal); color: var(--signal-ink); }
+.stop div { min-width: 0; }
+.stop b { display: block; font-family: var(--display); font-size: 18px; }
+.stop span { font-size: 13px; color: var(--muted); }
+.pend { font-style: normal; color: var(--warn-fg); background: var(--warn-bg); padding: 0 6px; border-radius: 6px; }
+.sleep.missing { border-color: var(--signal); }
+
+.docs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.btn.doc { border-color: var(--k, var(--line)); }
+.doclist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.docitem { width: 100%; text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; display: grid; gap: 2px; font: inherit; }
+.docitem .dname { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.docitem .dlabel { font-size: 12px; color: var(--muted); }
+.lock { position: fixed; inset: 0; z-index: 20; background: var(--board); color: var(--board-fg); display: grid; place-items: center; padding: 16px; }
+.lockcard { width: min(100%, 360px); display: grid; gap: 10px; }
+.lockcard h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 34px; }
+.lockcard p { margin: 0; opacity: .85; }
+.lockcard label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-top: 8px; }
+.lockcard input { font: 600 18px var(--mono); padding: 12px; border-radius: 10px; border: 0; background: var(--board-fg); color: var(--board); }
+.lockbtn { font: 700 16px var(--body); padding: 12px; border-radius: 10px; border: 0; background: var(--signal); color: var(--signal-ink); cursor: pointer; }
+.lockmsg { min-height: 1.4em; color: var(--signal); }
+.viewer { position: fixed; inset: 0; z-index: 15; background: var(--bg); display: flex; flex-direction: column; }
+.vbar { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; background: var(--board); color: var(--board-fg); }
+.vbar b { flex: 1; min-width: 0; font: 600 12px var(--mono); overflow-wrap: anywhere; }
+.vbtn { color: var(--board-fg); border-color: rgba(255,255,255,.35); }
+.vbody { flex: 1; overflow: auto; padding: 8px; display: grid; justify-items: center; align-content: start; gap: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+.vbody canvas, .vbody img { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); max-width: 100%; }
+.vmsg { color: var(--muted); }
+body.noscroll { overflow: hidden; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 99px; font-size: 13px; font-weight: 600; z-index: 10; }
+@media (prefers-reduced-motion: no-preference) { .ticket { transition: transform .15s; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1 id="tripName">MEUROPA</h1>
+      <div class="pax" id="pax"></div>
+    </div>
+    <div class="progress"><span class="status-pill" id="statusPill"></span><div class="bar"><i id="barFill"></i></div><span id="range"></span></div>
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button role="tab" id="tab-hoy" data-tab="hoy">Hoy</button>
+      <button role="tab" id="tab-route" data-tab="route">Ruta</button>
+      <button role="tab" id="tab-flight" data-tab="flight">Vuelos</button>
+      <button role="tab" id="tab-train" data-tab="train">Trenes y auto</button>
+      <button role="tab" id="tab-hotel" data-tab="hotel">Hoteles</button>
+      <button role="tab" id="tab-docs" data-tab="docs">Documentos</button>
+      <button role="tab" id="tab-all" data-tab="all">Todo</button>
+    </nav>
+  </header>
+
+  <div id="sampleNote" class="sample" hidden><b>Datos de ejemplo.</b> La pestaña Ruta ya tiene tu ruta real. Los vuelos, trenes y hoteles son inventados para mostrar cómo se verá, y se reemplazan en cuanto mandes tus reservas.</div>
+
+  <main id="view"></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="lock" id="lock" hidden>
+  <form class="lockcard" id="lockForm" autocomplete="on">
+    <h1>MEUROPA</h1>
+    <p>Escribe la contraseña del viaje. Solo se pide una vez en este teléfono.</p>
+    <label for="pw">Contraseña</label>
+    <input id="pw" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" required>
+    <button class="lockbtn" id="pwBtn" type="submit">Entrar</button>
+    <p class="lockmsg" id="lockMsg" role="status"></p>
+  </form>
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="vtitle">
+  <div class="vbar"><b id="vtitle"></b><a class="btn vbtn" id="vdl" href="#">Descargar</a><button class="btn vbtn" id="vclose" type="button">Cerrar</button></div>
+  <div class="vbody" id="vbody"></div>
+</div>
+
+<script>
+/* El itinerario y los documentos viven cifrados en data.bin y docs/*.bin (ver build.mjs).
+   Se descifran en el teléfono con la contraseña del viaje. */
+let TRIP = { name: "MEUROPA", travelers: "", items: [], route: [], docs: [] };
+
+/* ===== Fechas ===== */
+const DOW = ["dom","lun","mar","mié","jue","vie","sáb"];
+const MON = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const DOW_LONG = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MON_LONG = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d, 12); };
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate()+n); return ymd(d); };
+const diffDays = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+const longDate = s => { const d = parse(s); return `${DOW_LONG[d.getDay()]} ${d.getDate()} de ${MON_LONG[d.getMonth()]}`; };
+const shortDate = s => { const d = parse(s); return `${d.getDate()} ${MON[d.getMonth()]}`; };
+const today = ymd(new Date());
+
+/* ===== Derivar días ===== */
+function allDates() {
+  const ds = [];
+  TRIP.items.forEach(it => {
+    if (it.type === "hotel") ds.push(it.checkIn.date, it.checkOut.date);
+    else if (it.type === "car") ds.push(it.pickup.date, it.dropoff.date);
+    else if (it.from) ds.push(it.from.date, it.to.date);
+    else ds.push(it.date);
+  });
+  ds.sort();
+  return { start: ds[0], end: ds[ds.length-1] };
+}
+let start = today, end = today;
+const DAYS = [];
+function setTrip(t) {
+  TRIP = t; ({ start, end } = allDates());
+  DAYS.length = 0; for (let d = start; d <= end; d = addDays(d, 1)) DAYS.push(d);
+}
+
+function hotelFor(date) { return TRIP.items.find(h => h.type === "hotel" && h.checkIn.date <= date && date < h.checkOut.date); }
+function cityFor(date) {
+  const h = hotelFor(date); if (h) return h.city;
+  const moves = TRIP.items.filter(i => i.from && i.from.date === date);
+  if (moves.length) return `${moves[0].from.city} → ${moves[moves.length-1].to.city}`;
+  // Sin hotel: usa la ruta. Si no se sabe en cuál de dos ciudades están, muestra ambas.
+  const r = TRIP.route || [];
+  let pi = -1; r.forEach((st, i) => { if (st.in && st.in <= date) pi = i; });
+  if (pi < 0) return "";
+  let ni = r.findIndex((st, i) => i >= pi && st.out && st.out > date);
+  if (ni < 0) ni = pi;
+  return r.slice(pi, ni + 1).map(st => st.city).join(" / ");
+}
+function nightOnPlane(date) { return TRIP.items.some(i => i.type === "flight" && i.from.date === date && i.to.date > date); }
+
+function eventsFor(date) {
+  const ev = [];
+  TRIP.items.forEach(it => {
+    if (it.type === "car") {
+      if (it.pickup.date === date) ev.push({ time: it.pickup.time, label: "Recoger", it, role: "in" });
+      if (it.dropoff.date === date) ev.push({ time: it.dropoff.time, label: "Devolver", it, role: "out" });
+    } else if (it.type === "hotel") {
+      if (it.checkIn.date === date) ev.push({ time: it.checkIn.time, label: it.host ? "Llegada" : "Check-in", it, role: "in" });
+      if (it.checkOut.date === date) ev.push({ time: it.checkOut.time, label: it.host ? "Salida" : "Check-out", it, role: "out" });
+    } else if (it.from) {
+      if (it.from.date === date) ev.push({ time: it.from.time, label: "Sale", it, role: "dep" });
+      else if (it.to.date === date) ev.push({ time: it.to.time, label: "Llega", it, role: "arr" });
+    } else if (it.date === date) ev.push({ time: it.time, label: "", it, role: "plan" });
+  });
+  // Orden del día: salidas de hotel sin hora van primero; llegadas a hotel van después del último vuelo/tren que llega ese día.
+  const lastArrival = TRIP.items.filter(i => i.from && i.to.date === date && i.to.time).map(i => i.to.time).sort().pop() || "";
+  const key = e => {
+    if (e.it.type === "hotel" && e.role === "out") return "0" + (e.time || "");
+    if (e.it.type === "hotel" && e.role === "in") { const t = e.time || "23:59"; return lastArrival > t ? lastArrival + "z" : t; }
+    return e.time || e.it.sortTime || "99";
+  };
+  return ev.sort((a, b) => key(a).localeCompare(key(b)));
+}
+
+/* ===== Render ===== */
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const maps = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
+function confRow(code, mapQuery, label) {
+  if (!code && !mapQuery) return "";
+  return `<div class="conf">${code ? `<span class="lbl">${esc(label || "Confirmación")}</span><code>${esc(code)}</code>` : ""}
+    ${code ? `<button class="btn" data-copy="${esc(code)}">Copiar</button>` : ""}
+    ${mapQuery ? `<a class="btn" href="${maps(mapQuery)}" target="_blank" rel="noopener">Mapa ↗</a>` : ""}</div>`;
+}
+function facts(pairs) {
+  const f = pairs.filter(([, v]) => v);
+  return f.length ? `<dl class="facts">${f.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : "";
+}
+
+function ticket(e) {
+  const html = ticketBody(e), docs = (e.it.docs || []).map(docById).filter(Boolean);
+  if (!docs.length) return html;
+  return html.replace(/<\/article>$/, `<div class="docs">${docs.map(d => `<button class="btn doc" data-doc="${d.id}">${esc(d.label)}</button>`).join("")}</div></article>`);
+}
+const docById = id => TRIP.docs.find(d => d.id === id);
+function ticketBody(e) {
+  const it = e.it;
+  if (it.type === "flight") {
+    const overnight = it.from.date !== it.to.date;
+    return `<article class="ticket flight"><div class="kind">Vuelo${e.role === "arr" ? " · llegada" : ""}</div>
+      <h3>${esc(it.airline)} ${esc(it.number)}</h3>
+      <div class="route">
+        <div class="end"><div class="code">${esc(it.from.code)}</div><div class="t">${esc(it.from.time)}</div><div class="p">${esc(it.from.city)}${it.from.terminal ? " · " + esc(it.from.terminal) : ""}</div></div>
+        <div class="arrow">✈</div>
+        <div class="end"><div class="code">${esc(it.to.code)}</div><div class="t">${esc(it.to.time)}${overnight ? " +1" : ""}</div><div class="p">${esc(it.to.city)}${it.to.terminal ? " · " + esc(it.to.terminal) : ""}</div></div>
+      </div>
+      ${facts([["Asientos", it.seats], ["Equipaje", it.baggage]])}
+      ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
+      ${confRow(it.confirmation)}</article>`;
+  }
+  if (it.type === "train") {
+    return `<article class="ticket train"><div class="kind">Tren${e.role === "arr" ? " · llegada" : ""}</div>
+      <h3>${esc(it.operator)} ${esc(it.number)}</h3>
+      <div class="route">
+        <div class="end"><div class="t">${esc(it.from.time || "Libre")}</div><div class="p"><b>${esc(it.from.station)}</b></div></div>
+        <div class="arrow">→</div>
+        <div class="end"><div class="t">${esc(it.to.time || "—")}</div><div class="p"><b>${esc(it.to.station)}</b></div></div>
+      </div>
+      ${facts([["Asientos", it.seats]])}
+      ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
+      ${confRow(it.confirmation, e.role === "dep" ? it.from.station : it.to.station)}</article>`;
+  }
+  if (it.type === "car") {
+    const days = diffDays(it.pickup.date, it.dropoff.date);
+    return `<article class="ticket car"><div class="kind">Auto · ${e.role === "out" ? "devolución" : "entrega"}</div>
+      <h3>${esc(it.name)}</h3>
+      ${facts([["Recoger", `${shortDate(it.pickup.date)} ${it.pickup.time}${it.pickup.place ? " · " + it.pickup.place : ""}`], ["Devolver", `${shortDate(it.dropoff.date)} ${it.dropoff.time}${it.dropoff.place ? " · " + it.dropoff.place : ""}`], ["Días", String(days)], ["Pago", it.pay], ["Teléfono", it.phone]])}
+      ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
+      ${confRow(it.confirmation, (e.role === "out" ? it.dropoff.place : it.pickup.place) || "", it.confLabel)}</article>`;
+  }
+  if (it.type === "hotel") {
+    const nights = diffDays(it.checkIn.date, it.checkOut.date);
+    return `<article class="ticket hotel"><div class="kind">${it.host ? `Hospedaje · ${e.role === "out" ? "salida" : "llegada"}` : `Hotel · ${e.label}`}</div>
+      <h3>${esc(it.name)}</h3>${it.address ? `<p class="addr">${esc(it.address)}</p>` : ""}
+      ${facts([["Entrada", `${shortDate(it.checkIn.date)} ${it.checkIn.time}`.trim()], ["Salida", `${shortDate(it.checkOut.date)} ${it.checkOut.time}`.trim()], ["Noches", String(nights)], ["PIN", it.pin], ["Pago", it.pay], ["Teléfono", it.phone]])}
+      ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
+      ${confRow(it.confirmation, it.address, it.confLabel)}</article>`;
+  }
+  return `<article class="ticket plan"><div class="kind">${it.pending ? "Pendiente" : "Plan"}</div><h3>${esc(it.title)}</h3>
+    ${it.place ? `<p class="addr">${esc(it.place)}</p>` : ""}
+    ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
+    ${confRow(it.confirmation, it.place)}</article>`;
+}
+
+function evRow(e) {
+  return `<li class="ev"><div class="time">${esc(e.time || (e.it.pending ? "Pend." : e.it.sortTime ? "Libre" : "—"))}<small>${esc(e.label)}</small></div>${ticket(e)}</li>`;
+}
+
+let state = { tab: "hoy", day: null };
+try { const s = JSON.parse(localStorage.getItem("meuropa") || "{}"); if (s.tab) state.tab = s.tab; } catch (e) {}
+const save = () => { try { localStorage.setItem("meuropa", JSON.stringify({ tab: state.tab })); } catch (e) {} };
+
+function defaultDay() { return today < start ? start : today > end ? end : today; }
+
+function renderHeader() {
+  document.getElementById("tripName").textContent = TRIP.name;
+  document.getElementById("pax").textContent = TRIP.travelers;
+  document.getElementById("sampleNote").hidden = !TRIP.sample;
+  const total = DAYS.length, pill = document.getElementById("statusPill"), fill = document.getElementById("barFill");
+  document.getElementById("range").textContent = `${shortDate(start)} – ${shortDate(end)}`;
+  if (today < start) { const n = diffDays(today, start); pill.textContent = n === 1 ? "Mañana salen" : `Faltan ${n} días`; fill.style.width = "0%"; }
+  else if (today > end) { pill.textContent = "Viaje terminado"; fill.style.width = "100%"; }
+  else { const i = diffDays(start, today) + 1; pill.textContent = `Día ${i} de ${total}`; fill.style.width = `${(i / total) * 100}%`; }
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === state.tab));
+}
+
+function renderDay() {
+  const day = state.day || defaultDay();
+  const chips = DAYS.map(d => {
+    const dt = parse(d);
+    return `<button class="day-chip${d === today ? " today" : ""}" data-day="${d}" aria-pressed="${d === day}">
+      <div class="dow">${DOW[dt.getDay()]}</div><div class="num">${dt.getDate()}</div><div class="city">${esc(cityFor(d))}</div></button>`;
+  }).join("");
+  const evs = eventsFor(day), h = hotelFor(day), idx = diffDays(start, day) + 1;
+  const tag = day === today ? "Hoy · " : "";
+  return `<div class="days" id="days">${chips}</div>
+    <div class="day-head"><div class="eyebrow">${tag}Día ${idx} de ${DAYS.length}</div><h2>${esc(cityFor(day) || "En camino")}</h2><div class="sub">${longDate(day)}</div></div>
+    ${evs.length ? `<ol class="timeline">${evs.map(evRow).join("")}</ol>` : `<div class="empty">Día libre. No hay vuelos, trenes ni check-ins.</div>`}
+    ${h ? `<div class="sleep"><span class="ic" aria-hidden="true">☾</span><div><b>Esta noche: ${esc(h.name)}</b><span>${[h.address, h.confirmation ? `${h.confLabel || "Conf."} ${h.confirmation}` : h.notes].filter(Boolean).map(esc).join(" · ")}</span></div>
+      ${h.address ? `<a class="btn" style="margin-left:auto" href="${maps(h.address)}" target="_blank" rel="noopener">Mapa ↗</a>` : ""}</div>`
+      : day < end && !nightOnPlane(day) ? `<div class="sleep missing"><span class="ic" aria-hidden="true">☾</span><div><b>Esta noche: sin hotel cargado</b><span>Si ya lo reservaste, mándame la confirmación.</span></div></div>` : ""}`;
+}
+
+const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+function renderRoute() {
+  const r = TRIP.route || [];
+  const last = r.length - 1;
+  const known = TRIP.items.filter(i => i.type === "hotel").length;
+  return `<section class="list route-list"><h2>Ruta</h2><p class="sub">${last - 1} paradas · ${shortDate(start)} – ${shortDate(end)} · ${known} hospedajes cargados</p>
+    <ol class="stops">${r.map((st, i) => {
+      const home = i === 0 || i === last;
+      let line;
+      if (home) line = i === 0 ? `Salida ${shortDate(st.out)}` : `Regreso ${shortDate(st.in)}`;
+      else {
+        const dates = st.in && st.out ? `${shortDate(st.in)} – ${shortDate(st.out)} · ${diffDays(st.in, st.out)} noche${diffDays(st.in, st.out) === 1 ? "" : "s"}`
+          : st.in ? `Llegan ${shortDate(st.in)} · salida por confirmar` : st.out ? `Llegada por confirmar · salen ${shortDate(st.out)}` : "Fechas por confirmar";
+        const h = st.in && TRIP.items.find(x => x.type === "hotel" && x.checkIn.date === st.in);
+        line = `${dates}<br>${h ? esc(h.name) : '<em class="pend">Sin hotel cargado</em>'}`;
+      }
+      return `<li class="stop${home ? " home" : ""}"><span class="n">${home ? "✈" : i}</span><div><b>${esc(st.city)}</b><span>${esc(st.country)} · ${line}</span></div></li>`;
+    }).join("")}</ol></section>`;
+}
+
+function renderList(type) {
+  const titles = { flight: "Vuelos", train: "Trenes y auto", hotel: "Hoteles", all: "Todo el viaje" };
+  if (type === "all") {
+    return `<section class="list"><h2>${titles.all}</h2>${DAYS.map(d => {
+      const evs = eventsFor(d); if (!evs.length) return "";
+      return `<div class="group"><div class="gdate">${longDate(d)} · ${esc(cityFor(d))}</div><ol class="timeline">${evs.map(evRow).join("")}</ol></div>`;
+    }).join("")}</section>`;
+  }
+  const items = TRIP.items.filter(i => i.type === type || (type === "train" && i.type === "car"));
+  const dateOf = i => i.type === "hotel" ? i.checkIn.date : i.type === "car" ? i.pickup.date : i.from.date;
+  items.sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
+  return `<section class="list"><h2>${titles[type]}</h2>${items.length ? items.map(it => {
+    const e = { it, role: it.type === "hotel" || it.type === "car" ? "in" : "dep", label: it.type === "hotel" ? `${shortDate(it.checkIn.date)} → ${shortDate(it.checkOut.date)}` : "" };
+    return `<div class="group"><div class="gdate">${longDate(dateOf(it))}</div><ol class="timeline"><li class="ev solo">${ticket(e)}</li></ol></div>`;
+  }).join("") : `<div class="empty">Todavía no hay ${titles[type].toLowerCase()} cargados.</div>`}</section>`;
+}
+
+function renderDocs() {
+  const groups = {};
+  TRIP.docs.forEach(d => (groups[d.date] = groups[d.date] || []).push(d));
+  return `<section class="list"><h2>Documentos</h2><p class="sub">${TRIP.docs.length} archivos. Se guardan en el teléfono y se abren sin internet.</p>
+    ${Object.keys(groups).sort().map(date => `<div class="group"><div class="gdate">${longDate(date)}</div><ul class="doclist">${groups[date].map(d =>
+      `<li><button class="docitem" data-doc="${d.id}"><span class="dname">${esc(d.name)}</span><span class="dlabel">${esc(d.label)}</span></button></li>`).join("")}</ul></div>`).join("")}
+  </section>`;
+}
+
+function render() {
+  renderHeader();
+  const view = document.getElementById("view");
+  view.innerHTML = state.tab === "hoy" ? renderDay() : state.tab === "route" ? renderRoute() : state.tab === "docs" ? renderDocs() : renderList(state.tab);
+  const sel = view.querySelector('.day-chip[aria-pressed="true"]');
+  if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
+}
+
+document.addEventListener("click", ev => {
+  const tab = ev.target.closest("[data-tab]");
+  if (tab) { state.tab = tab.dataset.tab; if (state.tab === "hoy") state.day = null; save(); render(); window.scrollTo(0, 0); return; }
+  const chip = ev.target.closest("[data-day]");
+  if (chip) { state.day = chip.dataset.day; render(); return; }
+  const doc = ev.target.closest("[data-doc]");
+  if (doc) { openDoc(doc.dataset.doc); return; }
+  const cp = ev.target.closest("[data-copy]");
+  if (cp) {
+    const code = cp.dataset.copy;
+    const done = () => toast(`Copiado: ${code}`);
+    try { navigator.clipboard.writeText(code).then(done, () => toast(code)); } catch (e) { toast(code); }
+  }
+});
+let tt; function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 1800); }
+
+/* ===== Contraseña y descifrado ===== */
+let KEY = null;
+const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const toB64 = u8 => btoa(String.fromCharCode(...new Uint8Array(u8)));
+async function deriveKey(password) {
+  const meta = await (await fetch("meta.json")).json();
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: fromB64(meta.salt), iterations: meta.iterations, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, true, ["decrypt"]);
+}
+async function decryptFile(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error("No se pudo leer " + path);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, KEY, buf.slice(12));
+}
+async function loadTrip() { setTrip(JSON.parse(new TextDecoder().decode(await decryptFile("data.bin")))); }
+
+async function unlockWith(key) { KEY = key; await loadTrip(); document.getElementById("lock").hidden = true; render(); }
+document.getElementById("lockForm").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const pw = document.getElementById("pw").value.trim(), msg = document.getElementById("lockMsg"), btn = document.getElementById("pwBtn");
+  if (!pw) return;
+  btn.disabled = true; msg.textContent = "Abriendo…";
+  try {
+    const key = await deriveKey(pw);
+    await unlockWith(key);
+    try { localStorage.setItem("meuropa-key", toB64(await crypto.subtle.exportKey("raw", key))); } catch (e) {}
+    msg.textContent = "";
+  } catch (e) {
+    KEY = null; msg.textContent = navigator.onLine ? "Contraseña incorrecta." : "No se pudo abrir. Revisa la contraseña o conéctate a internet la primera vez.";
+  }
+  btn.disabled = false;
+});
+(async () => {
+  let stored = null;
+  try { stored = localStorage.getItem("meuropa-key"); } catch (e) {}
+  if (stored) {
+    try { return await unlockWith(await crypto.subtle.importKey("raw", fromB64(stored), "AES-GCM", true, ["decrypt"])); }
+    catch (e) { try { localStorage.removeItem("meuropa-key"); } catch (_) {} }
+  }
+  document.getElementById("lock").hidden = false;
+})();
+
+/* ===== Visor de documentos ===== */
+let pdfjsReady = null, viewerUrl = null;
+function loadPdfJs() {
+  return pdfjsReady ||= new Promise((ok, fail) => {
+    const s = document.createElement("script"); s.src = "vendor/pdfjs/pdf.min.js";
+    s.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdfjs/pdf.worker.min.js"; ok(); };
+    s.onerror = fail; document.head.appendChild(s);
+  });
+}
+async function openDoc(id) {
+  const d = docById(id); if (!d) return;
+  const v = document.getElementById("viewer"), body = document.getElementById("vbody"), dl = document.getElementById("vdl");
+  document.getElementById("vtitle").textContent = d.name;
+  body.innerHTML = '<p class="vmsg">Abriendo…</p>'; v.hidden = false; document.body.classList.add("noscroll");
+  try {
+    const bytes = await decryptFile(`docs/${d.id}.bin`);
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    viewerUrl = URL.createObjectURL(new Blob([bytes], { type: d.type }));
+    dl.href = viewerUrl; dl.download = d.name;
+    if (d.type.startsWith("image/")) { body.innerHTML = `<img src="${viewerUrl}" alt="${esc(d.name)}">`; return; }
+    await loadPdfJs();
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+    body.innerHTML = "";
+    const width = Math.min(body.clientWidth - 16, 900), ratio = window.devicePixelRatio || 1;
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n), base = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: (width / base.width) * ratio });
+      const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height; c.style.width = width + "px";
+      body.appendChild(c);
+      await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+    }
+  } catch (e) { body.innerHTML = '<p class="vmsg">No se pudo abrir el documento. Intenta con Descargar.</p>'; }
+}
+document.getElementById("vclose").addEventListener("click", () => {
+  document.getElementById("viewer").hidden = true; document.body.classList.remove("noscroll");
+  document.getElementById("vbody").innerHTML = "";
+});
+</script>
+<script>
+/* Sin conexión: muestra aviso y registra el service worker que guarda todo en el teléfono. */
+(function () {
+  const bar = document.createElement("div");
+  bar.className = "offline"; bar.hidden = navigator.onLine;
+  bar.textContent = "Sin internet. Estás viendo la copia guardada en este teléfono.";
+  document.querySelector(".wrap").insertBefore(bar, document.getElementById("view"));
+  addEventListener("online", () => bar.hidden = true);
+  addEventListener("offline", () => bar.hidden = false);
+  if ("serviceWorker" in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    // Cuando llega una versión nueva del itinerario, recarga una vez para mostrarla.
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
