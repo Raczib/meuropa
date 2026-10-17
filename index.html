@@ -389,10 +389,10 @@ function ticketBody(e) {
       ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
       ${confRow(it.confirmation, it.address, it.confLabel)}</article>`;
   }
-  return `<article class="ticket plan"><div class="kind">${it.pending ? "Pendiente" : "Plan"}</div><h3>${esc(it.title)}</h3>
+  return `<article class="ticket plan"><div class="kind">${it.pending ? "Pendiente" : esc(it.kind || "Plan")}</div><h3>${esc(it.title)}</h3>
     ${it.place ? `<p class="addr">${esc(it.place)}</p>` : ""}
     ${it.notes ? `<p class="note">${esc(it.notes)}</p>` : ""}
-    ${confRow(it.confirmation, it.place)}</article>`;
+    ${confRow(it.confirmation, it.place, it.confLabel)}</article>`;
 }
 
 function evRow(e) {
